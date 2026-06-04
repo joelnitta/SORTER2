@@ -59,4 +59,5 @@ if args.spades == 'T':
 			continue
 
 
-sys.exit("Trimgalore and SPADES processing has finished, exiting script")
+print("Trimgalore and SPADES processing has finished, exiting script")
+sys.exit(0)
