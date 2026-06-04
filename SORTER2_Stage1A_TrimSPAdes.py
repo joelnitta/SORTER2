@@ -4,7 +4,7 @@ import argparse
 import subprocess
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-n", "--projname", required=True, help='Name for SORTER Run')
+parser.add_argument("-o", "--outdir", required=True, help='Output directory for assembled results')
 parser.add_argument("-spades", "--spades", required=True, help='Run Spades Assembly? (T/F)')
 parser.add_argument("-trim", "--trim", required=True, help='Run Trim Galore? (T/F)')
 args = parser.parse_args()
@@ -13,8 +13,9 @@ args = parser.parse_args()
 #working directory iterator
 rootwd=os.getcwd()+'/'
 
-#Make Project Folder
-dst = rootwd + 'SORTER2_'+ args.projname +'/'
+#Output directory
+dst = args.outdir if args.outdir.endswith('/') else args.outdir + '/'
+os.makedirs(dst, exist_ok=True)
 wdlist = os.listdir(rootwd)
 print('Reads will be processed in:\n' + dst)
 
