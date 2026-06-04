@@ -15,6 +15,23 @@ import Bio
 from Bio import SeqIO
 
 
+def run_usearch(cmd):
+    cwd = os.getcwd()
+    if shutil.which('usearch'):
+        subprocess.call('usearch ' + cmd, shell=True)
+    elif shutil.which('docker'):
+        docker_cmd = (
+            'docker run --rm -v %s:%s -w %s '
+            'joelnitta/usearch:latest %s' % (cwd, cwd, cwd, cmd)
+        )
+        subprocess.call(docker_cmd, shell=True)
+    else:
+        sys.exit(
+            'Error: usearch not found. Install usearch locally or install '
+            'Docker and build the joelnitta/usearch image.'
+        )
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-wd", "--workingdir")
 parser.add_argument("-outdir", "--outputdir")
@@ -258,7 +275,7 @@ if args.recluster == 'T':
 	for file in os.listdir(contigdir):
 		if file.endswith('_allsamples_allcontigs.fasta'):
 			sp=file.split('_')
-			subprocess.call(["usearch -cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl')], shell=True)
+			run_usearch("-cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl'))
 
 	#Add _ to end of locus cluster files for processing
 	for file in os.listdir(contigdir):
@@ -567,7 +584,7 @@ else:
 			subprocess.call(["pwd"], shell=True)
 			for file in readir:
 				if file.endswith("longestfiltered.fa"):
-					subprocess.call(["usearch -cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-18])], shell=True)
+					run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-18]))
 
 
 	# #annotate contig-consensus fastas with sample ID and locus
@@ -763,7 +780,7 @@ else:
 	for file in os.listdir(contigdir):
 		if file.endswith('_allsamples_allcontigs.fasta'):
 			sp=file.split('_')
-			subprocess.call(["usearch -cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl')], shell=True)
+			run_usearch("-cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl'))
 
 	#Add _ to end of locus cluster files for processing
 	for file in os.listdir(contigdir):

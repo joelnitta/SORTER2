@@ -19,6 +19,24 @@ import itertools
 import argparse
 import glob
 
+
+def run_usearch(cmd):
+    cwd = os.getcwd()
+    if shutil.which('usearch'):
+        subprocess.call('usearch ' + cmd, shell=True)
+    elif shutil.which('docker'):
+        docker_cmd = (
+            'docker run --rm -v %s:%s -w %s '
+            'joelnitta/usearch:latest %s' % (cwd, cwd, cwd, cmd)
+        )
+        subprocess.call(docker_cmd, shell=True)
+    else:
+        sys.exit(
+            'Error: usearch not found. Install usearch locally or install '
+            'Docker and build the joelnitta/usearch image.'
+        )
+
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-wd", "--workingdir")
@@ -166,7 +184,7 @@ for folder in os.listdir(phaseset):
 os.chdir(diploidclusters)
 
 #make ublast data
-subprocess.call("usearch -makeudb_usearch ALLsamples_allcontigs_allbaitclusters_contigs_phased.fasta -output diploid_master.udb", shell=True)
+run_usearch("-makeudb_usearch ALLsamples_allcontigs_allbaitclusters_contigs_phased.fasta -output diploid_master.udb")
 
 #Map Contigs to Rereferences
 os.chdir(phaseset)
@@ -270,7 +288,7 @@ for folder in os.listdir(phaseset):
 		subprocess.call(["pwd"], shell=True)
 		for file in readir:
 			if file.endswith("longestfiltered.fa"):
-				subprocess.call(["usearch -cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-3])], shell=True)
+				run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-3]))
 
 
 os.chdir(phaseset)
@@ -464,7 +482,7 @@ for folder in os.listdir(phaseset):
 			if file.endswith('_Final.fasta'):
 				os.chdir(phaseset+folder)
 				subprocess.call(["awk 'BEGIN{FS=\" \"}{if(!/>/){print toupper($0)}else{print $1}}' %s > %s_cap.fasta" % (file, file[:-6])], shell=True)
-				subprocess.call(["usearch -usearch_global %s -db %s -id 0.9 -top_hit_only -blast6out %s_hits.txt -strand plus" % (file[:-6]+'_cap.fasta', diploid_db, file[:-12])], shell=True)
+				run_usearch("-usearch_global %s -db %s -id 0.9 -top_hit_only -blast6out %s_hits.txt -strand plus" % (file[:-6]+'_cap.fasta', diploid_db, file[:-12]))
 
 
 #Compile Polyploid into Diploid locus-cluster dataset, respectively

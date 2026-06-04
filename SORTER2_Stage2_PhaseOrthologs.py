@@ -14,6 +14,24 @@ from shutil import copyfile
 import Bio
 from Bio import SeqIO
 
+
+def run_usearch(cmd):
+    cwd = os.getcwd()
+    if shutil.which('usearch'):
+        subprocess.call('usearch ' + cmd, shell=True)
+    elif shutil.which('docker'):
+        docker_cmd = (
+            'docker run --rm -v %s:%s -w %s '
+            'joelnitta/usearch:latest %s' % (cwd, cwd, cwd, cmd)
+        )
+        subprocess.call(docker_cmd, shell=True)
+    else:
+        sys.exit(
+            'Error: usearch not found. Install usearch locally or install '
+            'Docker and build the joelnitta/usearch image.'
+        )
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-wa", "--assemblydir")
 parser.add_argument("-wc", "--clusterdir")
@@ -248,7 +266,7 @@ os.chdir(diploidclusters)
 
 #make ublast data
 subprocess.call("cat *degap.fasta > ALLsamples_allcontigs_allbaits_clusterannotated.fasta", shell=True)
-subprocess.call("usearch -makeudb_usearch ALLsamples_allcontigs_allbaits_clusterannotated.fasta -output diploid_master.udb", shell=True)
+run_usearch("-makeudb_usearch ALLsamples_allcontigs_allbaits_clusterannotated.fasta -output diploid_master.udb")
 
 print('Preparing Phase Directories...')
 
