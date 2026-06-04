@@ -279,14 +279,14 @@ if args.recluster == 'T':
 				for cid in clustid:
 					if cid in file:
 						with open(file, 'r') as infile:
-	   						for line in infile:
-	   							if '>' in line:
-	   								print(line)
-	   								linspl=line.split('_')
-	   								print(linspl)
-	   								name = linspl[0] + '_' + cid + linspl[1] + '_' + linspl[2] + '_'+ linspl[3]
-	   								print(name)
-	   								replaceAll(file, line, name)
+							for line in infile:
+								if '>' in line:
+									print(line)
+									linspl=line.split('_')
+									print(linspl)
+									name = linspl[0] + '_' + cid + linspl[1] + '_' + linspl[2] + '_'+ linspl[3]
+									print(name)
+									replaceAll(file, line, name)
 
 	os.chdir(contigdir)
 

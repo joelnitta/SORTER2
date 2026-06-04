@@ -383,12 +383,12 @@ for folder in direc:
 		for file in readir:
 			if file.endswith("0_Final.fasta"):
 				with open(file, 'r') as infile:
- 					for line in infile:
- 						if '>' in line:
- 							print(line)
- 							name = line.rstrip('\n') + '_ph0' + '\n'
- 							print(name)
- 							replaceAll(file, line, name)
+					for line in infile:
+						if '>' in line:
+							print(line)
+							name = line.rstrip('\n') + '_ph0' + '\n'
+							print(name)
+							replaceAll(file, line, name)
 os.chdir(assemblydir)
 
 for folder in direc:
@@ -399,12 +399,12 @@ for folder in direc:
 		for file in readir:
 			if file.endswith("1_Final.fasta"):
 				with open(file, 'r') as infile:
- 					for line in infile:
- 						if '>' in line:
- 							print(line)
- 							name = line.rstrip('\n') + '_ph1' + '\n'
- 							print(name)
- 							replaceAll(file, line, name)
+					for line in infile:
+						if '>' in line:
+							print(line)
+							name = line.rstrip('\n') + '_ph1' + '\n'
+							print(name)
+							replaceAll(file, line, name)
 
 os.chdir(assemblydir)
 
@@ -438,13 +438,13 @@ for baitcluster in os.listdir(diploidclusters):
 
 for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
- 			for baitcluster in DICT2.keys(): 
- 				DICT2[baitcluster][folder + 'ph0']=[]
+			for baitcluster in DICT2.keys(): 
+				DICT2[baitcluster][folder + 'ph0']=[]
 
 for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
- 			for baitcluster in DICT2.keys(): 
- 				DICT2[baitcluster][folder + 'ph1']=[]
+			for baitcluster in DICT2.keys(): 
+				DICT2[baitcluster][folder + 'ph1']=[]
 
 #print(DICT2)
 
@@ -611,10 +611,10 @@ with open('readstats.csv', 'w') as outfile:
 
 with open('readstats.csv', 'r') as infile:
     with open('readstats_fin.csv', 'w') as outfile:
-	    data = infile.read()
-	    data = data.replace("]", "")
-	    data = data.replace("[", "")
-	    outfile.write(data)
+        data = infile.read()
+        data = data.replace("]", "")
+        data = data.replace("[", "")
+        outfile.write(data)
 
 for file in os.listdir(assemblydir):
 	if file.endswith("readstats.csv"):

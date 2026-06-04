@@ -364,11 +364,11 @@ if args.dovcf == 'T':
 			writer.writerow([ind]+[HETDICT[ind][stat] for stat in stats])
 
 	with open('VCF_readstats1.csv', 'r') as infile:
-	    with open('VCF_readstats.csv', 'w') as outfile:
-		    data = infile.read()
-		    data = data.replace("]", "")
-		    data = data.replace("[", "")
-		    outfile.write(data)
+		with open('VCF_readstats.csv', 'w') as outfile:
+			data = infile.read()
+			data = data.replace("]", "")
+			data = data.replace("[", "")
+			outfile.write(data)
 
 	for file in os.listdir(vcfdir):
 		if file.endswith("readstats1.csv"):
