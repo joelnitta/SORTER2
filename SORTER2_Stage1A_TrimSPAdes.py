@@ -44,19 +44,34 @@ if args.trim == 'T':
 #Assemble Contigs with Spades
 if args.spades == 'T':
 
-	for file in os.listdir(dst):
-		if 'assembly' in file:
-			print("Running Spades on " + file)
-			os.chdir(dst + file)
-			for read in os.listdir(dst + file):
-				if 'R1_val_1.fq' in read:
-					R2 = read[:-11] + 'R2_val_2.fq'
-					subprocess.call(["spades.py --only-assembler -1 %s -2 %s -o spades_hybrid_assembly" % (read, R2)], shell=True)
-					os.chdir(dst)
-				else:
-					continue
-		else:
-			continue
+	if args.trim == 'T':
+		for file in os.listdir(dst):
+			if 'assembly' in file:
+				print("Running Spades on " + file)
+				os.chdir(dst + file)
+				for read in os.listdir(dst + file):
+					if 'R1_val_1.fq' in read:
+						R2 = read[:-11] + 'R2_val_2.fq'
+						subprocess.call(["spades.py --only-assembler -1 %s -2 %s -o spades_hybrid_assembly" % (read, R2)], shell=True)
+						os.chdir(dst)
+					else:
+						continue
+			else:
+				continue
+	else:
+		for file in wdlist:
+			if 'R1' in file and file.endswith('.fastq'):
+				filefolder=file.split('_')[0]+'_'+file.split('_')[1]+'_assembly'
+				readst= dst + filefolder + '/'
+				os.makedirs(readst, exist_ok=True)
+				print("Running Spades on " + file)
+				R1 = os.path.join(rootwd, file)
+				R2 = os.path.join(rootwd, file.replace('_R1.','_R2.'))
+				os.chdir(readst)
+				subprocess.call(["spades.py --only-assembler -1 %s -2 %s -o spades_hybrid_assembly" % (R1, R2)], shell=True)
+				os.chdir(rootwd)
+			else:
+				continue
 
 
 print("Trimgalore and SPADES processing has finished, exiting script")
