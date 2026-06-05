@@ -275,7 +275,7 @@ if args.recluster == 'T':
 	for file in os.listdir(contigdir):
 		if file.endswith('_allsamples_allcontigs.fasta'):
 			sp=file.split('_')
-			run_usearch("-cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl'))
+			run_usearch("-cluster_fast %s -sort length -id %s -clusters %s" % (file, args.clust2id ,sp[0] + '_cl'))
 
 	#Add _ to end of locus cluster files for processing
 	for file in os.listdir(contigdir):
@@ -564,7 +564,7 @@ else:
 			os.chdir(wf_folder)
 			for filename in os.listdir(wf_folder):
 				if filename.endswith("longestfiltered.fa"):
-					run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (filename, filename[:-18]))
+					run_usearch("-cluster_fast %s -id 0.99 -centroids %s_cons.fa" % (filename, filename[:-18]))
 
 
 	# #annotate contig-consensus fastas with sample ID and locus
@@ -725,7 +725,7 @@ else:
 	for file in os.listdir(contigdir):
 		if file.endswith('_allsamples_allcontigs.fasta'):
 			sp=file.split('_')
-			run_usearch("-cluster_fast %s -sort length -id %s -msaout %s" % (file, args.clust2id ,sp[0] + '_cl'))
+			run_usearch("-cluster_fast %s -sort length -id %s -clusters %s" % (file, args.clust2id ,sp[0] + '_cl'))
 
 	#Add _ to end of locus cluster files for processing
 	for file in os.listdir(contigdir):

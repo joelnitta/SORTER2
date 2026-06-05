@@ -293,7 +293,7 @@ for folder in os.listdir(phaseset):
 		subprocess.call(["pwd"], shell=True)
 		for file in readir:
 			if file.endswith("longestfiltered.fa"):
-				run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-3]))
+				run_usearch("-cluster_fast %s -id 0.99 -centroids %s_cons.fa" % (file, file[:-3]))
 
 
 os.chdir(phaseset)
