@@ -670,8 +670,6 @@ else:
 				DICT[bait][folder]=[]
 
 
-	print(DICT)
-
 	subprocess.call("cat *_ > ALLsamples_allcontigs_allbaits_contigs.fasta", shell=True)
 
 	#filling in the dictionary with a list of one or more contig sequences for each bait and each sample
