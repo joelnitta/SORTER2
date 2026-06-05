@@ -3,9 +3,9 @@ from os import path
 import sys
 import subprocess
 import fileinput
-import csv 
+import csv
 import re
-import itertools 
+import itertools
 import argparse
 import glob
 import shutil
@@ -49,6 +49,11 @@ args = parser.parse_args()
 outdir = args.outputdir if args.outputdir.endswith('/') else args.outputdir + '/'
 os.makedirs(outdir, exist_ok=True)
 
+# Per-sample working files go here so workingdir (stage1a output) is never
+# written to by this stage.
+workfilesdir = outdir + 'assembly_workfiles/'
+os.makedirs(workfilesdir, exist_ok=True)
+
 os.chdir(args.workingdir)
 
 baitid1= ["L%d_" % x for x in range(int(args.locinum))]
@@ -61,7 +66,7 @@ direc=os.listdir(args.workingdir)
 def check_folder(directory, folder_name):
 	# Construct the full path of the folder
 	folder_path = os.path.join(directory, folder_name)
-	
+
 	# Check if the folder exists
 	if not os.path.exists(folder_path):
 		# Create the folder if it does not exist
@@ -92,10 +97,10 @@ def get_longest_sequences(input_file, output_file, X):
 
 	# Read sequences from the input FASTA file
 	sequences = list(SeqIO.parse(input_file, "fasta"))
-	
+
 	# Sort sequences by length in descending order and take the X longest sequences
 	longest_sequences = sorted(sequences, key=lambda seq: len(seq.seq), reverse=True)[:X]
-	
+
 	# Write the X longest sequences to the output FASTA file
 	SeqIO.write(longest_sequences, output_file, "fasta")
 
@@ -103,7 +108,7 @@ def extract_longest_sequences(input_file, X):
 	X=int(X)
 	# Determine the output file name
 	output_file = input_file + "longest.fa"
-	
+
 	# Extract and write the longest sequences
 	get_longest_sequences(input_file, output_file, X)
 
@@ -149,20 +154,15 @@ def deinterleave_fasta(input_file, output_file):
 
 if args.recluster == 'T':
 	os.chdir(args.workingdir)
-	#clear data from last clusetering run
+	#clear data from last clustering run
 	print('Preparing Locus-Cluster Directories for reclustering (i.e. using contigs from previous run)')
-	for folder in os.listdir(args.workingdir):
+	for folder in os.listdir(workfilesdir):
 		if folder.endswith("assembly"):
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if not 'spades_hybrid_assembly' in file:
-					if not '_val_' in file:
-						if not 'fastqc' in file:
-							if not file.endswith('map.fa'):
-								if not file.endswith('cons.fa'):
-									os.remove(dirpath + file)
+			wf_folder = workfilesdir + folder + '/'
+			for file in os.listdir(wf_folder):
+				if not file.endswith('map.fa'):
+					if not file.endswith('cons.fa'):
+						os.remove(wf_folder + file)
 
 	os.chdir(args.workingdir)
 
@@ -181,7 +181,8 @@ if args.recluster == 'T':
 
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
+			wf_folder = workfilesdir + folder + '/'
+			os.chdir(wf_folder)
 			subprocess.call(["cat *_cons.fa  > %s_allcontigs_allbaits_contigs.fasta" % (folder[:-9])], shell=True)
 
 	os.chdir(args.workingdir)
@@ -190,11 +191,10 @@ if args.recluster == 'T':
 	for folder in direc:
 		if 'assembly' in folder:
 			print('Moving ' + folder + ' contigs to /diploids/ directory')
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			for file in readir:
+			wf_folder = workfilesdir + folder + '/'
+			for file in os.listdir(wf_folder):
 				if file.endswith('_allcontigs_allbaits_contigs.fasta'):
-					src = args.workingdir + folder + '/' + file
+					src = wf_folder + file
 					dst = contigdir + file[:-33]
 					os.rename(src, dst)
 
@@ -209,13 +209,13 @@ if args.recluster == 'T':
 	os.chdir(contigdir)
 
 	DICT= {}
-	for bait in baitid: 
+	for bait in baitid:
 		if bait not in DICT:
 			DICT[bait]={}
 
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for bait in DICT.keys(): 
+			for bait in DICT.keys():
 				DICT[bait][folder]=[]
 
 
@@ -227,7 +227,7 @@ if args.recluster == 'T':
 	input_fasta=SeqIO.parse("ALLsamples_allcontigs_allbaits_contigs.fasta", "fasta")
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for bait in DICT.keys(): 
+			for bait in DICT.keys():
 				for record in input_fasta:
 					bait=record.id.split('_', 3)[2]
 					print(bait)
@@ -245,7 +245,7 @@ if args.recluster == 'T':
 			outfile = open(bait+"_allsamples_allcontigs.fasta", 'w+')
 			for folder in DICT[bait].keys():
 				if len(DICT[bait][folder])>0:
-					seq_list = DICT[bait][folder] 
+					seq_list = DICT[bait][folder]
 					sorted_seq_list = sorted(seq_list, key = lambda id: int(len(seq)), reverse=True)
 					for seq in sorted_seq_list:
 						index=str(sorted_seq_list.index(seq))
@@ -253,7 +253,7 @@ if args.recluster == 'T':
 						outfile.write(str('>'+bait+'_'+folder+index+'\n'+seq+'\n'))
 
 
-	#output the nested dictory to a csv file that can be exported into an excel table where rows are baits, columns are samples, and cell values are number of contigs 
+	#output the nested dictory to a csv file that can be exported into an excel table where rows are baits, columns are samples, and cell values are number of contigs
 
 	columns = [x for x in map_contigs_to_baits_dir if x.endswith('_')]
 	header = ['bait']+columns
@@ -365,7 +365,7 @@ if args.recluster == 'T':
 
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for baitcluster in DICT2.keys(): 
+			for baitcluster in DICT2.keys():
 				DICT2[baitcluster][folder]=[]
 
 
@@ -377,7 +377,7 @@ if args.recluster == 'T':
 	input_fasta=SeqIO.parse("ALLsamples_allcontigs_allbaitclusters_contigs.fasta", "fasta")
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for baitcluster in DICT2.keys(): 
+			for baitcluster in DICT2.keys():
 				for record in input_fasta:
 					bait= record.id.split('_', 1)[0]
 					baitcluster= 'L' + bait.split('L', 1)[1] + '_' + record.id.split('_', 3)[1] + '_'
@@ -396,7 +396,7 @@ if args.recluster == 'T':
 			outfile = open(baitcluster+"_allsamples_allcontigs.fasta", 'w+')
 			for folder in DICT2[baitcluster].keys():
 				if len(DICT2[baitcluster][folder])>0:
-					seq_list = DICT2[baitcluster][folder] 
+					seq_list = DICT2[baitcluster][folder]
 					sorted_seq_list = sorted(seq_list, key = lambda id: int(len(seq)), reverse=True)
 					for seq in sorted_seq_list:
 						index=str(sorted_seq_list.index(seq))
@@ -404,7 +404,7 @@ if args.recluster == 'T':
 						outfile.write(str('>'+baitcluster+folder+index+'\n'+seq+'\n'))
 
 
-	# ##output the nested dictory to a csv file that can be exported into an excel table where rows are baitclusters, columns are samples, and cell values are number of contigs 
+	# ##output the nested dictory to a csv file that can be exported into an excel table where rows are baitclusters, columns are samples, and cell values are number of contigs
 	columns = [x for x in map_contigs_to_baits_dir if x.endswith('_')]
 	header = ['baitcluster']+columns
 
@@ -431,7 +431,7 @@ if args.recluster == 'T':
 							linspl=line.split(' ')[0]
 							linspl2=linspl.split('_')
 							print(linspl2)
-							name = linspl2[0] + '_' + linspl2[1] + '_' + linspl2[2] + '_' + linspl2[3] 
+							name = linspl2[0] + '_' + linspl2[1] + '_' + linspl2[2] + '_' + linspl2[3]
 							print(name)
 							replaceAll(file, line, name)
 	else:
@@ -446,7 +446,7 @@ if args.recluster == 'T':
 								linspl=line.split(' ')[0]
 								linspl2=linspl.split('_')
 								print(linspl2)
-								name = '>' + linspl2[2] + '_' + linspl2[3] 
+								name = '>' + linspl2[2] + '_' + linspl2[3]
 								print(name)
 								replaceAll(file, line, name)
 		else:
@@ -455,48 +455,33 @@ if args.recluster == 'T':
 else:
 
 	print('Preparing Directories For contig assembly and ortholog clustering...')
-	for folder in os.listdir(args.workingdir):
-		if folder.endswith("assembly"):
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if not 'spades_hybrid_assembly' in file:
-					if not '_val_' in file:
-						if not 'trimming_report' in file:
-							if not 'fastqc' in file:
-								os.remove(dirpath + file)
-							else:
-								continue
 
 	os.chdir(args.workingdir)
 
 	#make bwa index of consensusbaits
-	subprocess.call(["bwa index %s" % (args.refdir)], shell=True)						
+	subprocess.call(["bwa index %s" % (args.refdir)], shell=True)
 
-	#map contigs to consensus baits, move contigs as scaffoldmap.fa or contigmap.fa to root sample directory (WA01_species)
+	#map contigs to consensus baits; write all outputs to workfilesdir
 
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
+			wf_folder = workfilesdir + folder + '/'
+			os.makedirs(wf_folder, exist_ok=True)
+			dirpath = args.workingdir + folder + '/'
+			for file in os.listdir(dirpath):
 				if file.endswith("_hybrid_assembly"):
-					os.chdir(args.workingdir + folder + "/" + file + "/")
-					filepath =  args.workingdir + folder + "/" + file + "/"
-					iterpath2 = os.listdir(filepath)
-					for contig in iterpath2:
+					filepath = dirpath + file + '/'
+					for contig in os.listdir(filepath):
 						if contig.endswith("contigs.fasta"):
-							conscontig= args.refdir
-							contigmap= dirpath + "/" + file + "/"+ contig
-							os.chdir(dirpath)
-							subprocess.call(["bwa mem -V %s %s > %s_contigmap.sam" % (conscontig, contigmap, dirpath+folder)], shell=True)
-							subprocess.call(["samtools view -S -F 4 %s_contigmap.sam | awk -v OFS='\t' '{print \">\" $3\"_\" \"\\n \" $10}' > %scontigmap.fa " % (dirpath+folder,folder + '_')], shell=True)
-							src = folder +'_contigmap.fa'
-							dst = dirpath + folder + '_contigmap.fa'
-							os.rename(src, dst)
-							os.remove(folder + '_contigmap.sam')
+							conscontig = args.refdir
+							contigmap = filepath + contig
+							subprocess.call(["bwa mem -V %s %s > %s_contigmap.sam" % (
+								conscontig, contigmap, wf_folder + folder)], shell=True)
+							subprocess.call(["samtools view -S -F 4 %s_contigmap.sam | "
+								"awk -v OFS='\\t' '{print \">\" $3\"_\" \"\\n \" $10}' "
+								"> %s_contigmap.fa" % (
+								wf_folder + folder, wf_folder + folder)], shell=True)
+							os.remove(wf_folder + folder + '_contigmap.sam')
 
 
 
@@ -507,18 +492,16 @@ else:
 	for folder in direc:
 		if 'assembly' in folder:
 			print(folder)
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			subprocess.call(["pwd"], shell=True)
-			for file in readir:
-				if file.endswith("contigmap.fa"):
-					print(file)
-					with open(file, 'r') as contigfile:
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_contigmap.fa"):
+					print(filename)
+					with open(wf_folder + filename, 'r') as contigfile:
 						for line in contigfile:
 							for id in baitid1:
 								if id in line:
 									print(line)
-									with open(os.path.join(args.workingdir + folder, id), 'a') as idx:
+									with open(wf_folder + id, 'a') as idx:
 											while True:
 												try:
 													idx.write(line)
@@ -538,19 +521,18 @@ else:
 
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			subprocess.call(["pwd"], shell=True)
-			for file in readir:
-				if file.endswith("_"):
-					with open(file, 'r') as infile:
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_"):
+					filepath = wf_folder + filename
+					with open(filepath, 'r') as infile:
 						for line in infile:
 							for id in baitid1:
 								if id in line:
 									print(line)
 									name = '>' + folder[:-9] + '_' + id + '\n'
 									print(name)
-									replaceAll(file, line, name)		
+									replaceAll(filepath, line, name)
 	os.chdir(args.workingdir)
 
 	print('Take ' + args.contignum + ' longest contigs for each locus per sample, then removing any contigs smaller than ' + args.contiglen + ' bp')
@@ -558,17 +540,16 @@ else:
 	#Take longest contig from contig set
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			subprocess.call(["pwd"], shell=True)
-			for file in readir:
-				if file.endswith("_"):
-					with open(file,'r') as contigs:
-						#Get longest contigs
-						extract_longest_sequences(file, args.contignum)
-						#Remove sequences shorter than user defined length
-						subprocess.call(["seqtk seq -L %s %slongest.fa > %slongestfiltered.fa" % (args.contiglen, file, file)], shell=True )
-						os.remove(file+'longest.fa')
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_"):
+					filepath = wf_folder + filename
+					#Get longest contigs
+					extract_longest_sequences(filepath, args.contignum)
+					#Remove sequences shorter than user defined length
+					subprocess.call(["seqtk seq -L %s %slongest.fa > %slongestfiltered.fa" % (
+						args.contiglen, filepath, filepath)], shell=True)
+					os.remove(filepath + 'longest.fa')
 
 	os.chdir(args.workingdir)
 
@@ -579,93 +560,59 @@ else:
 	for folder in direc:
 		if 'assembly' in folder:
 			print(folder)
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			subprocess.call(["pwd"], shell=True)
-			for file in readir:
-				if file.endswith("longestfiltered.fa"):
-					run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (file, file[:-18]))
+			wf_folder = workfilesdir + folder + '/'
+			os.chdir(wf_folder)
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("longestfiltered.fa"):
+					run_usearch("-cluster_fast %s -id 0.99 -consout %s_cons.fa" % (filename, filename[:-18]))
 
 
 	# #annotate contig-consensus fastas with sample ID and locus
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			subprocess.call(["pwd"], shell=True)
-			for file in readir:
-				if file.endswith("_cons.fa"):
-					with open(file, 'r') as infile:
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_cons.fa"):
+					filepath = wf_folder + filename
+					with open(filepath, 'r') as infile:
 						for line in infile:
 							if '>' in line:
 								print(line)
-								name = '>' + folder[:-9] + '_' + file[:-8] + '\n'
+								name = '>' + folder[:-9] + '_' + filename[:-8] + '\n'
 								print(name)
-								replaceAll(file, line, name)		
+								replaceAll(filepath, line, name)
 	os.chdir(args.workingdir)
 
 	# #remove unclustered and excess Locus Sequence Files
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if file.endswith("_"):
-					print('deleting: ' + file)
-					os.remove(dirpath + file)
-				else:
-					continue
-		else:
-			continue
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_"):
+					print('deleting: ' + filename)
+					os.remove(wf_folder + filename)
 
 	os.chdir(args.workingdir)
 
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if file.endswith("_longest.fa"):
-					print('deleting: ' + file)
-					os.remove(dirpath + file)
-				else:
-					continue
-		else:
-			continue
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_longest.fa"):
+					print('deleting: ' + filename)
+					os.remove(wf_folder + filename)
 
 
 	os.chdir(args.workingdir)
 
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if file.endswith("_longestfiltered.fa"):
-					print(file)
-					os.remove(dirpath + file)
-				else:
-					continue
-		else:
-			continue
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith("_longestfiltered.fa"):
+					print(filename)
+					os.remove(wf_folder + filename)
 
-	os.chdir(args.workingdir)
-	#clear data from last clusetering run
-	print('Preparing Locus-Cluster Directories')
-	for folder in os.listdir(args.workingdir):
-		if folder.endswith("assembly"):
-			os.chdir(args.workingdir + folder)
-			dirpath =  args.workingdir + folder + "/"
-			iterpath = os.listdir(dirpath)
-			for file in iterpath:
-				if not 'spades_hybrid_assembly' in file:
-					if not '_val_' in file:
-						if not file.endswith('map.fa'):
-							if not file.endswith('cons.fa'):
-								os.remove(dirpath + file)
 
 	os.chdir(args.workingdir)
 
@@ -685,7 +632,8 @@ else:
 	#make master file for all contigs
 	for folder in direc:
 		if 'assembly' in folder:
-			os.chdir(args.workingdir + folder)
+			wf_folder = workfilesdir + folder + '/'
+			os.chdir(wf_folder)
 			subprocess.call(["cat *_cons.fa  > %s_allcontigs_allbaits_contigs.fasta" % (folder[:-9])], shell=True)
 
 	os.chdir(args.workingdir)
@@ -694,12 +642,11 @@ else:
 	for folder in direc:
 		if 'assembly' in folder:
 			print('Moving ' + folder + ' contigs to /diploids/ directory')
-			os.chdir(args.workingdir + folder)
-			readir = os.listdir(args.workingdir + folder)
-			for file in readir:
-				if file.endswith('_allcontigs_allbaits_contigs.fasta'):
-					src = args.workingdir + folder + '/' + file
-					dst = contigdir + file[:-33]
+			wf_folder = workfilesdir + folder + '/'
+			for filename in os.listdir(wf_folder):
+				if filename.endswith('_allcontigs_allbaits_contigs.fasta'):
+					src = wf_folder + filename
+					dst = contigdir + filename[:-33]
 					os.rename(src, dst)
 
 	os.chdir(contigdir)
@@ -713,13 +660,13 @@ else:
 	os.chdir(contigdir)
 
 	DICT= {}
-	for bait in baitid: 
+	for bait in baitid:
 		if bait not in DICT:
 			DICT[bait]={}
 
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for bait in DICT.keys(): 
+			for bait in DICT.keys():
 				DICT[bait][folder]=[]
 
 
@@ -731,7 +678,7 @@ else:
 	input_fasta=SeqIO.parse("ALLsamples_allcontigs_allbaits_contigs.fasta", "fasta")
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for bait in DICT.keys(): 		
+			for bait in DICT.keys():
 				for record in input_fasta:
 					bait=record.id.split('_', 3)[2]
 					print(bait)
@@ -749,7 +696,7 @@ else:
 			outfile = open(bait+"_allsamples_allcontigs.fasta", 'w+')
 			for folder in DICT[bait].keys():
 				if len(DICT[bait][folder])>0:
-					seq_list = DICT[bait][folder] 
+					seq_list = DICT[bait][folder]
 					sorted_seq_list = sorted(seq_list, key = lambda id: int(len(seq)), reverse=True)
 					for seq in sorted_seq_list:
 						index=str(sorted_seq_list.index(seq))
@@ -757,7 +704,7 @@ else:
 						outfile.write(str('>'+bait+'_'+folder+index+'\n'+seq+'\n'))
 
 
-	#output the nested dictory to a csv file that can be exported into an excel table where rows are baits, columns are samples, and cell values are number of contigs 
+	#output the nested dictory to a csv file that can be exported into an excel table where rows are baits, columns are samples, and cell values are number of contigs
 
 	columns = [x for x in map_contigs_to_baits_dir if x.endswith('_')]
 	header = ['bait']+columns
@@ -815,7 +762,7 @@ else:
 
 	##Align and trim regions which don't share overlap (i.e. region with unique indel, used to remove long flanking tails, can set -indel to 0.01 to keep all indels)
 	#All clusters with single sequences not aligned and not compiled downstream
-	
+
 
 	#Remove duplicate sequences before aligning/trimming
 
@@ -874,7 +821,7 @@ else:
 
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for baitcluster in DICT2.keys(): 
+			for baitcluster in DICT2.keys():
 				DICT2[baitcluster][folder]=[]
 
 
@@ -887,7 +834,7 @@ else:
 
 	for folder in map_contigs_to_baits_dir:
 		if folder.endswith('_'):
-			for baitcluster in DICT2.keys(): 
+			for baitcluster in DICT2.keys():
 				for record in input_fasta:
 					bait= record.id.split('_', 1)[0]
 					baitcluster= 'L' + bait.split('L', 1)[1] + '_' + record.id.split('_', 3)[1] + '_'
@@ -903,7 +850,7 @@ else:
 			outfile = open(baitcluster+"_allsamples_allcontigs.fasta", 'w+')
 			for folder in DICT2[baitcluster].keys():
 				if len(DICT2[baitcluster][folder])>0:
-					seq_list = DICT2[baitcluster][folder] 
+					seq_list = DICT2[baitcluster][folder]
 					sorted_seq_list = sorted(seq_list, key = lambda id: int(len(seq)), reverse=True)
 					for seq in sorted_seq_list:
 						index=str(sorted_seq_list.index(seq))
@@ -911,7 +858,7 @@ else:
 						outfile.write(str('>'+baitcluster+folder+index+'\n'+seq+'\n'))
 
 
-	#output the nested dictory to a csv file that can be exported into an excel table where rows are baitclusters, columns are samples, and cell values are number of contigs 
+	#output the nested dictory to a csv file that can be exported into an excel table where rows are baitclusters, columns are samples, and cell values are number of contigs
 	columns = [x for x in map_contigs_to_baits_dir if x.endswith('_')]
 	header = ['baitcluster']+columns
 

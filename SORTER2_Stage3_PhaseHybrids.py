@@ -39,7 +39,8 @@ def run_usearch(cmd):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-wd", "--workingdir")
+parser.add_argument("-wp", "--phaseddir")
+parser.add_argument("-wa", "--assemblydir")
 parser.add_argument("-outdir", "--outputdir")
 parser.add_argument("-loci", "--locinum")
 parser.add_argument("-csn", "--contigscafnum")
@@ -51,14 +52,18 @@ parser.add_argument("-indel", "--indelrep")
 parser.add_argument("-fp", "--filterundiff")
 
 args = parser.parse_args()
-outdir = args.outputdir if args.outputdir else args.workingdir
+# phaseddir: Stage 2 output dir — contains diploids_phased/
+phaseddir = args.phaseddir if args.phaseddir.endswith('/') else args.phaseddir + '/'
+# assemblydir: Stage 1A output dir — contains *_assembly/ dirs for diploid samples
+assemblydir = args.assemblydir if args.assemblydir.endswith('/') else args.assemblydir + '/'
+outdir = args.outputdir if args.outputdir else phaseddir
 outdir = outdir if outdir.endswith('/') else outdir + '/'
 os.makedirs(outdir, exist_ok=True)
 phaseset=outdir + 'phaseset/'
 baitid1= ["L%d_" % x for x in range(int(args.locinum))]
 baitid= ["L%d" % x for x in range(int(args.locinum))]
-diploidclusters=args.workingdir + 'diploids_phased/'
-diploid_db = args.workingdir + 'diploids_phased/diploid_master.udb'
+diploidclusters=phaseddir + 'diploids_phased/'
+diploid_db = phaseddir + 'diploids_phased/diploid_master.udb'
 
 
 # #Define command to change sequence IDs
@@ -451,7 +456,7 @@ for folder in os.listdir(phaseset):
 					statfile.close()
 
 
-os.chdir(args.workingdir)
+os.chdir(phaseddir)
 #Make a copy of diploid locus-clusters for each sample in phase set
 dpdst= phaseset + 'diploidclusters_phased/'
 shutil.copytree(diploidclusters, dpdst)
@@ -586,7 +591,7 @@ for file in os.listdir(phaseset+'diploidclusters_phased/'):
 		os.chdir(phaseset+'diploidclusters_phased/')
 		with open(file, 'r') as infile:
 			for line in infile:
-				for folder in os.listdir(args.workingdir):
+				for folder in os.listdir(assemblydir):
 					if 'assembly' in folder:
 						sample=folder.split('_')[0] +'_' + folder.split('_')[1]
 						if sample in line:
