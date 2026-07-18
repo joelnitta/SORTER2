@@ -14,6 +14,7 @@ from shutil import copyfile
 import Bio
 from Bio import SeqIO
 from concurrent.futures import ProcessPoolExecutor
+from sorter2_readstats import parse_readstats
 
 
 def run_usearch(cmd):
@@ -531,34 +532,9 @@ for samp in os.listdir(workfilesdir):
 						if args.verbose:
 							print(readstat)
 						with open(samp_dir + readstat, "r") as statfile:
-							for line in statfile:
-								if '+' in line:
-									statlabela = line.split(" ")[3]
-									statlabel = statlabela.strip('\n')
-									statinta = line.split(" ")[0]
-									statint = statinta.strip('\n')
-									if args.verbose:
-										print(statlabel)
-										if args.verbose:
-											print(statint)
-									HETDICT[ind][statlabel] = []
-									HETDICT[ind][statlabel].append(int(statint))
-								elif re.fullmatch(r'[\d.]+\n?', line):
-									# the two samtools depth lines appended
-									# after flagstat output, in write order:
-									# mean depth, then coverage percent. Not
-									# positional, since flagstat's line count
-									# varies by samtools version/build.
-									statlabel = (
-										'readdepth'
-										if 'readdepth' not in HETDICT[ind]
-										else 'coverage'
-									)
-									statint = line.strip('\n')
-									if args.verbose:
-										print(statlabel + ' = ' + statint)
-									HETDICT[ind][statlabel] = []
-									HETDICT[ind][statlabel].append(int(float(statint)))
+							HETDICT[ind].update(
+								parse_readstats(statfile, verbose=args.verbose)
+							)
 
 #get readstat values
 het_values_list = list(HETDICT.values())

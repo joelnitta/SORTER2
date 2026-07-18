@@ -18,6 +18,7 @@ import re
 import itertools
 import argparse
 import glob
+from sorter2_readstats import parse_readstats
 
 
 def run_usearch(cmd, extra_mounts=None):
@@ -746,34 +747,9 @@ for samp in os.listdir(phaseset):
 						if args.verbose:
 							print(readstat)
 						with open(readstat, "r") as statfile:
-							for line in statfile:
-								if '+' in line:
-									statlabela = line.split(" ")[3]
-									statlabel = statlabela.strip('\n')
-									statinta = line.split(" ")[0]
-									statint = statinta.strip('\n')
-									if args.verbose:
-										print(statlabel)
-									if args.verbose:
-										print(statint)
-									HETDICT[ind][statlabel]=[]
-									HETDICT[ind][statlabel].append(int(statint))
-								elif re.fullmatch(r'[\d.]+\n?', line):
-									# the two samtools depth lines appended
-									# after flagstat output, in write order:
-									# mean depth, then coverage percent. Not
-									# positional, since flagstat's line count
-									# varies by samtools version/build.
-									statlabel = (
-										'readdepth'
-										if 'readdepth' not in HETDICT[ind]
-										else 'coverage'
-									)
-									statint = line.strip('\n')
-									if args.verbose:
-										print(statlabel + ' = ' + statint)
-									HETDICT[ind][statlabel]=[]
-									HETDICT[ind][statlabel].append(int(float(statint)))
+							HETDICT[ind].update(
+								parse_readstats(statfile, verbose=args.verbose)
+							)
 
 os.chdir(phaseset)
 
