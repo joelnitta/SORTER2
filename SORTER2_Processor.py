@@ -393,8 +393,7 @@ if args.dovcf == 'T':
 				if ind in readstat:
 					print(readstat)
 					with open(readstat, "r") as statfile:
-						lines_to_read = [16, 17]
-						for position, line in enumerate(statfile):
+						for line in statfile:
 							if '+' in line:
 								statlabela = line.split(" ")[3]
 								statlabel = statlabela.strip('\n')
@@ -404,20 +403,21 @@ if args.dovcf == 'T':
 								print(statint)
 								HETDICT[ind][statlabel]=[]
 								HETDICT[ind][statlabel].append(int(statint))
-							else:
-								if position in lines_to_read:
-									if position == 16:
-										statlabel = 'readdepth'
-										statint = line.strip('\n')
-										print(statlabel + ' = ' + statint)
-										HETDICT[ind][statlabel]=[]
-										HETDICT[ind][statlabel].append(int(float(statint)))
-									elif position == 17:
-										statlabel = 'coverage'
-										statint = line.strip('\n')
-										print(statlabel + ' = ' + statint)
-										HETDICT[ind][statlabel]=[]
-										HETDICT[ind][statlabel].append(int(float(statint)))
+							elif re.fullmatch(r'[\d.]+\n?', line):
+								# the two samtools depth lines appended
+								# after flagstat output, in write order:
+								# mean depth, then coverage percent. Not
+								# positional, since flagstat's line count
+								# varies by samtools version/build.
+								statlabel = (
+									'readdepth'
+									if 'readdepth' not in HETDICT[ind]
+									else 'coverage'
+								)
+								statint = line.strip('\n')
+								print(statlabel + ' = ' + statint)
+								HETDICT[ind][statlabel]=[]
+								HETDICT[ind][statlabel].append(int(float(statint)))
 
 	#get readstat values
 	het_values_list = list(HETDICT.values())
